@@ -4,7 +4,6 @@
 
 
 
-//Calcul du potentiel d'une configuration donnée
 int energie(double *u_tot, double pos[], double box[], double rcut, double n, int ndim, double uc) {
     double rij_sq,dx,r6i,r12i;
     *u_tot = 0;
@@ -14,10 +13,10 @@ int energie(double *u_tot, double pos[], double box[], double rcut, double n, in
             for (int d = 0; d < ndim; d++) {
                 dx = (pos[i*ndim+d]-pos[j*ndim+d]);
                 //conditions pbc
-                if (dx > box[i]*0.5) { 
-                    dx -= box[i];
-                } else if (dx < -box[i]*0.5) {
-                    dx += box[i];
+                if (dx > box[d]*0.5) { 
+                    dx = dx-box[d];
+                } else if (dx < -box[d]*0.5) {
+                    dx = dx+box[d];
                 }
                 rij_sq += dx*dx;
             }
@@ -25,10 +24,64 @@ int energie(double *u_tot, double pos[], double box[], double rcut, double n, in
                 r6i = 1/(rij_sq*rij_sq*rij_sq);
                 r12i = r6i*r6i;
                 *u_tot += 4*(r12i-r6i)-uc;
+                // printf("Energie = %f\n",*u_tot);
             }
         }
     }
     return 0;
+}
+
+
+//Calcul du potentiel d'une configuration donnée
+int energie_Verlet(double *u_tot, double pos[], double box[], double rcut, int n, int ndim, double uc,int Liste_Verlet[]) {
+    double rij_sq,dx,r6i,r12i;
+    *u_tot = 0;
+    for (int i = 0; i < n-1; i++){
+        for (int j = i+1; j < n; j++) {
+            if (Liste_Verlet[i*n+j]==1) {
+                rij_sq = 0;
+                for (int d = 0; d < ndim; d++) {
+                    dx = (pos[i*ndim+d]-pos[j*ndim+d]);
+                    //conditions pbc
+                    if (dx > box[d]*0.5) { 
+                        dx = dx-box[d];
+                    } else if (dx < -box[d]*0.5) {
+                        dx = dx+box[d];
+                    }
+                    rij_sq += dx*dx;
+                }
+                if (rij_sq < rcut*rcut) {
+                    r6i = 1/(rij_sq*rij_sq*rij_sq);
+                    r12i = r6i*r6i;
+                    *u_tot += 4*(r12i-r6i)-uc;
+                    // printf("Energie = %f\n",*u_tot);
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+//Update de la liste de verlet
+int Update_Liste_Verlet(double pos[], int n, int ndim, double rv, int Liste_Verlet[], double old_pos[]) {
+    double rij_sq, dx;
+    for (int i = 0; i<n; i++) {
+        for (int d = 0; d<ndim; d++){
+            old_pos[i*ndim+d] = pos[i*ndim+d];
+        }
+        for (int j = i+1; j<n; j++) {
+            rij_sq = 0;
+            for (int d = 0; d < ndim; d++) {
+                dx = pos[i*ndim+d] - pos[j*ndim+d];
+                rij_sq += dx*dx;
+            }
+            if (rij_sq < rv*rv) {
+                Liste_Verlet[i*n+j] = 1;
+            } else {
+                Liste_Verlet[i*n+j] = 0;
+            }
+        }
+    }   
 }
 
 // Début de l'algo de metropolis pas du tout fini
@@ -59,14 +112,52 @@ int metropolis(double pos[], double box[], int n, int ndim, double lmax, double 
     return 0;
 }
 
+int metropolis_Verlet(double pos[], double box[], int n, int ndim, double lmax, double *E_old, double kT, double rcut, double uc, int *n_accept, int Liste_Verlet[], double old_pos[], double rv) {
+    double displacement[ndim], E_new, delta_E, proba,deltar_sq = 0, dx;
+    int n_part = floor((((double)rand()/RAND_MAX))*n);
+    for (int d = 0; d < ndim; d++) {
+        displacement[d] = ((((double)rand()/RAND_MAX)-0.5)*2*lmax);
+        pos[n_part*ndim+d] += displacement[d];
+        if (pos[n_part*ndim+d] > box[d]*0.5) { 
+            pos[n_part*ndim+d]-= box[d];
+        } else if (pos[n_part*ndim+d] < -box[d]*0.5) {
+            pos[n_part*ndim+d]+= box[d];
+        }
+    }
+    //On check si la particule s'est déplacée de plus que rv, si oui on réactualise la liste de verlet
+    for (int d = 0; d < ndim; d++) {
+        dx = pos[n_part*ndim+d]-old_pos[n_part*ndim+d];
+        deltar_sq += dx*dx;
+    }
+    if (deltar_sq > rv*rv) {
+        Update_Liste_Verlet(pos,n,ndim,rv,Liste_Verlet,old_pos);
+    }
+
+    energie_Verlet(&E_new, pos, box, rcut, n, ndim, uc,Liste_Verlet);
+    delta_E = E_new - *E_old;
+    if ((double)rand()/RAND_MAX < exp(-delta_E/kT)) {
+        *E_old = E_new;
+        *n_accept = *n_accept + 1;
+        // printf("Nouvelles valeurs avec E = %f et delta_E = %f\n", E_new, delta_E);
+    } else {
+        // printf("Conservation de E = %f pour delta_E = %f\n", *E_old, delta_E);
+        for (int d = 0; d < ndim; d++) {
+            pos[n_part*ndim+d] -= displacement[d];
+        }
+    }
+    return 0;
+}
+
 //Fonction permettant de lire un fichier xyz déja généré
-int read_file(FILE *fp, double **pos, double **box, int *n, int ndim) {
+int read_file(FILE *fp, double **pos, double **box, int *n, double **old_pos, int **Liste_Verlet, int ndim) {
     double pos_temp[ndim];
     char temp[1];
     fscanf(fp,"%d",n);
 
     *box = malloc(ndim*sizeof(double));
     *pos = malloc(ndim*(*n)*sizeof(double));
+    *old_pos = malloc(ndim*(*n)*sizeof(double));
+    *Liste_Verlet = malloc((*n)*(*n)*sizeof(int));
 
     //On initialise la taille de la boite
     if (ndim == 3) {
@@ -118,15 +209,15 @@ int save_xyz(FILE *fp, double pos[], int current_cycle, int n, int ndim) {
 }
 
 int main (int argc, char *argv[]) {
-    int ndim=2, n , seed = 22, n_cycles = 100, current_cycle = 0;
+    int ndim=2, n , seed = 22, n_cycles = 1000, current_cycle = 0, *Liste_Verlet;
     if (argc > 1) {
         sscanf(argv[1],"%d",&seed);
     }
     int n_accept = 0, n_iter;
-    double *pos, *box, utot;
+    double *pos,*old_pos, *box, utot;
     double uc, rcut = 2.5, rcut2i,rcut6i,rcut12i;
-    double lmax = 0.05;
-    double kT = 1;
+    double lmax = 0.005, rv = rcut + lmax*100;
+    double kT = 0.01;
     srand(seed);
     //Utile pour calculer le Lennard Jones shifté
     rcut2i = 1/(rcut*rcut);
@@ -137,29 +228,37 @@ int main (int argc, char *argv[]) {
     //Lecture et initialisation des fichiers
     FILE *read, *xyz, *log;
     read = fopen("cryst2D.xyz","r");
-    read_file(read, &pos, &box, &n, ndim);
+    read_file(read, &pos, &box, &n,&old_pos,&Liste_Verlet,ndim);
     
-    xyz = fopen("res/pos_test2D.xyz","w");
+    xyz = fopen("res/out.xyz","w");
     save_xyz(xyz, pos,0,n,ndim);
     energie(&utot, pos, box, rcut, n, ndim, uc);
 
-    log = fopen("res/log_test2D.log","w");
+    log = fopen("res/out.log","w");
     save_log(log, utot, box, kT, n, ndim, current_cycle, lmax, seed);
 
     printf("Energie initiale = %f\n",utot);
     n_iter = n_cycles*n;
 
-    //Boucle principale
-    for (int i = 0; i < n_iter; i++) {
-        metropolis(pos, box, n, ndim, lmax, &utot, kT, rcut, uc, &n_accept);
-        if (i%(n) == 0) {
-            current_cycle ++;
-            save_log(log, utot, box, kT, n, ndim, current_cycle, lmax, seed);
-        }
-        if (i%(2*n) == 0) {
-            save_xyz(xyz, pos,current_cycle,n,ndim);
+    Update_Liste_Verlet(pos,n,ndim,rv,Liste_Verlet,old_pos);
+    for (int i = 0; i < n; i++) {
+        for (int j = i+1; j<n; j++) {
+            printf("Part i %d, Part j %d Liste Verlet %d\n",i,j,Liste_Verlet[i*n+j]);
         }
     }
+
+    // // Boucle principale
+    // for (int i = 0; i < n_iter; i++) {
+    //     // metropolis(pos, box, n, ndim, lmax, &utot, kT, rcut, uc, &n_accept);
+    //     metropolis_Verlet(pos, box, n, ndim, lmax, &utot, kT, rcut, uc, &n_accept,Liste_Verlet,old_pos,rv);
+    //     if (i%(n) == 0) {
+    //         current_cycle ++;
+    //         save_log(log, utot, box, kT, n, ndim, current_cycle, lmax, seed);
+    //     }
+    //     if (i%(2*n) == 0) {
+    //         save_xyz(xyz, pos,current_cycle,n,ndim);
+    //     }
+    // }
     
     printf("Energie finale = %f\n",utot);
     printf("Taux d'acceptation = %f\n",(double)n_accept/n_iter);
