@@ -13,8 +13,8 @@ int main (int argc, char *argv[]) {
     posx = (-box_size+dx)/2;
     FILE *file;
 
-    file = fopen("cryst2D.xyz","w");
-    fprintf(file,"%d\n%lf %lf\n",n*n, box_size, box_size);
+    file = fopen("input.xyz","w");
+    fprintf(file,"%d 2\n%lf %lf\n",n*n, box_size, box_size);
 
 
     for (int l = 0; l < n; l++) {

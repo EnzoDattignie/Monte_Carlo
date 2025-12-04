@@ -238,23 +238,14 @@ int save_xyz(FILE *fp, double pos[], int current_cycle, int n, int ndim, double 
 }
 
 int main (int argc, char *argv[]) {
-    int ndim, n , seed = 22, n_cycles = 100, current_cycle = 0, *Liste_Verlet;
-    double lmax = 0.01;
+    int ndim, n , seed = 22, n_cycles = 11000, current_cycle = 0, *Liste_Verlet;
+    double lmax = 0.02;
     char *input_file = "input.xyz";
-    if (argc > 1) {
-        sscanf(argv[1],"%d",&seed);
-        if (argc > 2) {
-            sscanf(argv[2],"%d",&n_cycles);
-            if (argc > 3) {
-                sscanf(argv[3],"%lf",&lmax);
-                }
-            }
-        } 
     int n_accept = 0, n_iter;
     double *pos,*old_pos, *box, utot;
     double uc, rcut = 2.5, rcut2i,rcut6i,rcut12i, utail;
     double rv = rcut + lmax*10;
-    double kT = 10;
+    double kT = 0.01;
     srand(seed);
     //Utile pour calculer le Lennard Jones shifté
     rcut2i = 1/(rcut*rcut);
@@ -295,8 +286,8 @@ int main (int argc, char *argv[]) {
             printf("Current cycle : %d\n",current_cycle);
             save_xyz(xyz, pos,current_cycle,n,ndim,kT);
             if (i > 1000*n) {
-                kT -= 0.01;
-                lmax -= 0.0002;
+                kT += 0.01;
+                lmax += 0.0003;
             }
         }
     } 

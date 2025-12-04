@@ -4,7 +4,7 @@
 
 int main (int argc, char *argv[]) {
     int n = 6; //N = n*n*n
-    double box_size = 20., posy, posx, posz;
+    double box_size = 15., posy, posx, posz;
     if (argc == 3) {
         sscanf(argv[1],"%d",&n);
         sscanf(argv[2],"%lf",&box_size);
@@ -13,8 +13,8 @@ int main (int argc, char *argv[]) {
     posx = (-box_size+dx)/2;
     FILE *file;
 
-    file = fopen("cryst3D.xyz","w");
-    fprintf(file,"%d\n%lf %lf %lf\n",n*n*n, box_size, box_size, box_size);
+    file = fopen("input.xyz","w");
+    fprintf(file,"%d 3\n%lf %lf %lf\n",n*n*n, box_size, box_size, box_size);
 
     
     for (int l = 0; l < n; l++) {

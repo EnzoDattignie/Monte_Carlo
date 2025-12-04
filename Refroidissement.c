@@ -238,18 +238,9 @@ int save_xyz(FILE *fp, double pos[], int current_cycle, int n, int ndim, double 
 }
 
 int main (int argc, char *argv[]) {
-    int ndim, n , seed = 22, n_cycles = 100, current_cycle = 0, *Liste_Verlet;
-    double lmax = 0.01;
+    int ndim, n , seed = 22, n_cycles = 11000, current_cycle = 0, *Liste_Verlet;
+    double lmax = 0.25;
     char *input_file = "input.xyz";
-    if (argc > 1) {
-        sscanf(argv[1],"%d",&seed);
-        if (argc > 2) {
-            sscanf(argv[2],"%d",&n_cycles);
-            if (argc > 3) {
-                sscanf(argv[3],"%lf",&lmax);
-                }
-            }
-        } 
     int n_accept = 0, n_iter;
     double *pos,*old_pos, *box, utot;
     double uc, rcut = 2.5, rcut2i,rcut6i,rcut12i, utail;
