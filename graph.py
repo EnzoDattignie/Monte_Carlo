@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 n_cycle = []
-P = []
+E = []
 
 with open("res/out.log","r") as file :
     i = 0
@@ -12,7 +12,7 @@ with open("res/out.log","r") as file :
         else :
             Line = lines.split()
             n_cycle.append(float(Line[0]))
-            P.append(float(Line[3]))
+            E.append(float(Line[2]))
 
-plt.plot(n_cycle,P)
+plt.plot(n_cycle,E)
 plt.show()

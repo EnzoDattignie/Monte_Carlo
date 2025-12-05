@@ -327,6 +327,7 @@ int main (int argc, char *argv[]) {
     int i = 0;
     for (i = 0; i < n_iter; i++) {
         //metropolis(pos, box, n, ndim, lmax, &utot, kT, rcut, uc, &n_accept);
+        
         metropolis_Verlet(pos, box, n, ndim, lmax, &utot, kT, rcut, uc, &n_accept,Liste_Verlet,old_pos,rv);
         if (i%(n) == 0) {
             current_cycle ++;
