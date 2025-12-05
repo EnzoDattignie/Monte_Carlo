@@ -85,6 +85,45 @@ int u_tail(double *utail, double pos[], double box[], int Liste_Verlet[], int n,
     return 0;
 }
 
+int pressure(double *P, double pos[], double box[], int Liste_Verlet[], int n, int ndim,double kT, double rc) {
+    double V = 1, rij_sq, dx, sum_rfr = 0, r2i, r6i, r12i, Ptail, rc2i, rc4i, rc10i;
+    for (int d = 0; d < ndim; d++) {
+        V = V*box[d];
+    }
+    *P = n*kT/V;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            if (Liste_Verlet[i*n+j]==1) {
+                rij_sq = 0;
+                for (int d = 0; d < ndim; d++) {
+                    dx = pos[i*ndim+d] - pos[j*ndim+d];
+                    //pbc
+                    if (dx > box[d]*0.5) { 
+                        dx = dx-box[d];
+                    } else if (dx < -box[d]*0.5) {
+                        dx = dx+box[d];
+                    }
+                    rij_sq += dx*dx;
+                }
+                if (rij_sq < rc*rc) {
+                    r2i = 1/rij_sq;
+                    r6i = r2i*r2i*r2i;
+                    r12i = r6i*r6i;
+                    sum_rfr += 24*(2*r12i - r6i);
+                }
+            }
+        }
+    }
+    *P += 1/(ndim*V)*sum_rfr;
+    if (ndim = 2) {
+        rc2i = 1/(rc*rc);
+        rc10i = rc2i*rc2i*rc2i*rc2i*rc2i;
+        Ptail = 3*M_PI*n*n/(V*V)*(4/5 *rc10i - rc2i*rc2i);
+        //printf("P = %f, Ptail = %f Ptot = %f\n",*P,Ptail,*P+Ptail);
+        *P += Ptail;
+    }
+}
+
 //Update de la liste de verlet
 int Update_Liste_Verlet(double pos[], int n, int ndim, double rv, int Liste_Verlet[], double old_pos[], double box[]) {
     double rij_sq, dx;
@@ -213,15 +252,15 @@ int read_file(FILE *fp, double **pos, double **box, int *n, double **old_pos, in
     return 0;
 }
 
-int save_log(FILE *fp, double E, double box[], double kT, int n, int ndim, int current_cycle, double lmax, int seed) {
+int save_log(FILE *fp, double E, double box[], double kT, double P, int n, int ndim, int current_cycle, double lmax, int seed) {
     if (current_cycle == 0) {
         fprintf(fp,"N = %d, T = %f/kb, dim = %d, max displacement = %f, seed = %d, box = %f",n,kT,ndim,lmax,seed, box[0]);
         for (int d = 0; d < ndim; d++) {
             fprintf(fp,"x%f",box[d]);
         }
-        fprintf(fp,"\ncycle T E\n");
+        fprintf(fp,"\ncycle T E P\n");
     }
-    fprintf(fp,"%d %f %f\n",current_cycle,kT,E);
+    fprintf(fp,"%d %f %f %f\n",current_cycle,kT,E,P);
 }
 
 int save_xyz(FILE *fp, double pos[], int current_cycle, int n, int ndim, double kT) {
@@ -238,8 +277,8 @@ int save_xyz(FILE *fp, double pos[], int current_cycle, int n, int ndim, double 
 }
 
 int main (int argc, char *argv[]) {
-    int ndim, n , seed = 22, n_cycles = 100, current_cycle = 0, *Liste_Verlet;
-    double lmax = 0.01;
+    int ndim, n , seed = 22, n_cycles = 1000, current_cycle = 0, *Liste_Verlet;
+    double lmax = 0.04, P, kT = 10;
     char *input_file = "input.xyz";
     if (argc > 1) {
         sscanf(argv[1],"%d",&seed);
@@ -248,13 +287,15 @@ int main (int argc, char *argv[]) {
             if (argc > 3) {
                 sscanf(argv[3],"%lf",&lmax);
                 }
+                if (argc > 4) {
+                    sscanf(argv[4],"%lf",&kT);
+                }
             }
         } 
     int n_accept = 0, n_iter;
     double *pos,*old_pos, *box, utot;
     double uc, rcut = 2.5, rcut2i,rcut6i,rcut12i, utail;
     double rv = rcut + lmax*10;
-    double kT = 10;
     srand(seed);
     //Utile pour calculer le Lennard Jones shifté
     rcut2i = 1/(rcut*rcut);
@@ -279,7 +320,8 @@ int main (int argc, char *argv[]) {
     energie_Verlet(&utot, pos, box, rcut, n, ndim, uc,Liste_Verlet);
     
     u_tail(&utail,pos,box,Liste_Verlet,n,ndim,rcut,uc);
-    save_log(log, utot+utail, box, kT, n, ndim, current_cycle, lmax, seed);
+    pressure(&P, pos, box, Liste_Verlet, n, ndim, kT, rcut);
+    save_log(log, utot+utail, box, kT, P, n, ndim, current_cycle, lmax, seed);
     printf("Energie initiale = %f\n",utot+utail);
     // Boucle principale
     int i = 0;
@@ -289,15 +331,12 @@ int main (int argc, char *argv[]) {
         if (i%(n) == 0) {
             current_cycle ++;
             u_tail(&utail,pos,box,Liste_Verlet,n,ndim,rcut,uc);
-            save_log(log, utot+utail, box, kT, n, ndim, current_cycle, lmax, seed);
+            pressure(&P, pos, box, Liste_Verlet, n, ndim, kT, rcut);
+            save_log(log, utot+utail, box, kT, P, n, ndim, current_cycle, lmax, seed);
         }
         if (i%(10*n) == 0) {
-            printf("Current cycle : %d\n",current_cycle);
+            //printf("Current cycle : %d\n",current_cycle);
             save_xyz(xyz, pos,current_cycle,n,ndim,kT);
-            if (i > 1000*n) {
-                kT -= 0.01;
-                lmax -= 0.0002;
-            }
         }
     } 
     

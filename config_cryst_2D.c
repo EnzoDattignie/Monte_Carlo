@@ -9,7 +9,8 @@ int main (int argc, char *argv[]) {
         sscanf(argv[1],"%d",&n);
         sscanf(argv[2],"%lf",&box_size);
     }
-    int dx = box_size/n; 
+    double dx = box_size/n; 
+    printf("dx = %f\n",dx);
     posx = (-box_size+dx)/2;
     FILE *file;
 
