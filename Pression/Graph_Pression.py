@@ -10,7 +10,7 @@ V = np.zeros(length)
 P = np.zeros(length)
 P_GP = np.zeros(length)
 
-with open("res/Pressure.log","r") as file :
+with open("Pressure.log","r") as file :
     i = -1
     for lines in file :
         if i >= 0 :
