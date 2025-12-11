@@ -33,6 +33,7 @@ with open("res/out_Phase_V.log","r") as file :
 plt.plot(rho,E,label="V Variable")
 plt.legend()
 plt.xlabel("\u03c1 (\u03c3"+"$^{-2}$)")
-plt.ylabel("Energie (\u03B5)")
+plt.ylabel("E/N (\u03B5)")
+plt.title("Energie par particule en fonction de la densité")
 
 plt.show()
