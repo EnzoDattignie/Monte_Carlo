@@ -277,7 +277,7 @@ int save_xyz(FILE *fp, double pos[], int current_cycle, int n, int ndim, double 
 }
 
 int main (int argc, char *argv[]) {
-    int ndim, n , seed = 22, n_cycles = 1000, current_cycle = 0, *Liste_Verlet;
+    int ndim, n , seed = 22, n_cycles = 100, current_cycle = 0, *Liste_Verlet;
     double lmax = 0.04, P, kT = 10;
     char *input_file = "input.xyz";
     if (argc > 1) {
@@ -336,7 +336,7 @@ int main (int argc, char *argv[]) {
             save_log(log, utot+utail, box, kT, P, n, ndim, current_cycle, lmax, seed);
         }
         if (i%(10*n) == 0) {
-            //printf("Current cycle : %d\n",current_cycle);
+            printf("Current cycle : %d\n",current_cycle);
             save_xyz(xyz, pos,current_cycle,n,ndim,kT);
         }
     } 

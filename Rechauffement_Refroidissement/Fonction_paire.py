@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 # On commence par lire la donnée
 
 box = np.array([10,10])
-input = "res/RefroidissementL10.xyz"
+input = "res/EchauffementL10.xyz"
 output = "res/paire_EchauffementL10_10pt.log"
 nk = 500
-nstep = 100
+nstep = 10
 
 pos = []
 
@@ -72,8 +72,16 @@ for k in range(0,nk) :
     g0[k] = h0[k]/(n*nstep)
     r_low = (k-1)*dr
     r_high = r_low+dr 
-    h_id = const*(r_high**2 - r_low**2) #Aire de la surface entre r et r+dr
+    h_id = 2*np.pi*(r_high**2 - r_low**2)*rho #Aire de la surface entre r et r+dr
     g0[k] = g0[k]/h_id
+
+for k in range(nk):
+    g0[k] = h0[k] / (n*nstep)
+    r_low  = k * dr
+    r_high = r_low + dr
+    h_id = const * (r_high**2 - r_low**2)
+    g0[k] = g0[k] / h_id
+
 
 plt.plot(r,g0,label = "kT = 10")
 
@@ -105,7 +113,7 @@ for k in range(0,nk) :
     g0[k] = h0[k]/(n*nstep)
     r_low = (k-1)*dr
     r_high = r_low+dr 
-    h_id = const*(r_high**2 - r_low**2) #Aire de la surface entre r et r+dr
+    h_id = const * (r_high**2 - r_low**2) #Aire de la surface entre r et r+dr
     g0[k] = g0[k]/h_id
 
 plt.plot(r,g0,label = "kT = 0.01")
