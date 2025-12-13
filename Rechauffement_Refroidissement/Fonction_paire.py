@@ -54,8 +54,8 @@ print("Calculating for high temperatures ...")
 h0 = np.zeros(nk)
 g0 = np.zeros(nk)
 # Calcul du h
+for m in range(1090,1100) :
 # for m in range(90,100) :
-for m in range(90,100) :
     for i in range(0,n) :
         for j in range(i+1,n) :
             rij = pos[m][i] - pos[m][j]
@@ -95,8 +95,8 @@ print("Calculating for low temperatures ...")
 h0 = np.zeros(nk)
 g0 = np.zeros(nk)
 # Calcul du h
-# for m in range(90,100) :
-for m in range(1090,1100) :
+for m in range(90,100) :
+# for m in range(1090,1100) :
     for i in range(0,n) :
         for j in range(i+1,n) :
             rij = pos[m][i] - pos[m][j]
@@ -119,5 +119,6 @@ for k in range(0,nk) :
 plt.plot(r,g0,label = "kT = 0.01")
 plt.xlabel("r (\u03c3)")
 plt.ylabel("g(r)")
+plt.title("Fonction de distribution de paire pour L = 10\u03c3")
 plt.legend()
 plt.show()
